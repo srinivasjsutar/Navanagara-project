@@ -16,19 +16,18 @@ const siteBookingSchema = new mongoose.Schema(
     },
     projectname: String,
     sitedimension: String,
-    transactionid: String,
     totalamount: {
       type: Number,
       required: true,
     },
-    bookingamount: {
-      type: Number,
-      required: false, // ← was required: true, now optional
-    },
-    downpayment: Number,
-    installments: Number,
-    paymentmode: String,
-    bank: String,
+    designation: String,
+    nominees: [
+      {
+        name: { type: String },
+        age: { type: String },
+        relationship: { type: String },
+      },
+    ],
     seniority_no: {
       type: String,
       required: true,

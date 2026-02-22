@@ -47,15 +47,18 @@ const MainApp = () => {
 
   const memberRoutes = ["/member/dashboard"];
 
+  // ✅ Lowercase comparison — fixes /adminLogin, /AdminLogin, etc. all hiding sidebar
+  const currentPath = location.pathname.toLowerCase();
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Admin Sidebar */}
-      {!noSidebarRoutes.includes(location.pathname) &&
-        !superAdminRoutes.includes(location.pathname) &&
-        !memberRoutes.includes(location.pathname) && <SideBar />}
+      {!noSidebarRoutes.includes(currentPath) &&
+        !superAdminRoutes.includes(currentPath) &&
+        !memberRoutes.includes(currentPath) && <SideBar />}
 
       {/* SuperAdmin Sidebar */}
-      {superAdminRoutes.includes(location.pathname) && (
+      {superAdminRoutes.includes(currentPath) && (
         <SideBar prefix="/superadmin" />
       )}
 
@@ -64,6 +67,11 @@ const MainApp = () => {
           {/* Public Routes */}
           <Route path="/" element={<Navigate to="/adminlogin" replace />} />
           <Route path="/adminlogin" element={<AdminLogin />} />
+          {/* ✅ Redirect any casing variation to lowercase */}
+          <Route
+            path="/adminLogin"
+            element={<Navigate to="/adminlogin" replace />}
+          />
           <Route path="/memberlogin" element={<MemberLogin />} />
           <Route path="/loginheader" element={<LoginHeader />} />
           <Route path="/superadmin" element={<SuperAdmin />} />

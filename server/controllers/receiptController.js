@@ -209,7 +209,11 @@ exports.createReceipt = async (req, res) => {
 
 Thank you for your payment.
 
-Seniority Number : ${seniorityNumber}
+
+ Your account is generated 
+Username         : ${seniorityNumber}
+password         : ${memberDoc.mobile}
+senority number  : ${seniorityNumber}
 Amount Paid      : Rs.${amountpaid.toLocaleString("en-IN")}
 Payment Mode     : ${receiptData.paymentmode}
 Transaction ID   : ${receiptData.transactionid}

@@ -129,19 +129,16 @@ export function SiteBookingList() {
       localStorage.getItem("adminToken");
 
     // Send only the editable fields — avoids sending Mongoose internals
+    // Bank field removed
     const payload = {
       seniority_no: editData.seniority_no,
       name: editData.name,
       projectname: editData.projectname,
       sitedimension: editData.sitedimension,
-      transactionid: editData.transactionid,
-      bookingamount: editData.bookingamount,
-      downpayment: editData.downpayment,
-      paymentmode: editData.paymentmode,
       totalamount: editData.totalamount,
       date: editData.date,
-      installments: editData.installments,
-      bank: editData.bank,
+      designation: editData.designation,
+      nominees: editData.nominees,
     };
 
     try {
@@ -156,7 +153,6 @@ export function SiteBookingList() {
       );
 
       if (response.data?.success) {
-        // Merge updated payload back into the full member object (keeps _id etc.)
         const updatedMember = { ...selectedMember, ...payload };
         SetMemberDetails((prev) =>
           prev.map((m) => (m._id === selectedMember._id ? updatedMember : m)),
@@ -202,7 +198,6 @@ export function SiteBookingList() {
     setMemberDetailsData(null);
   };
 
-  // Correct calculation: Paid = sum of all non-cancelled receipts, Remaining = totalAmount - paidAmount
   const calculatePaymentSummary = (member) => {
     const totalAmount = parseFloat(member.totalamount) || 0;
     const paidAmount = memberReceipts.reduce(
@@ -560,7 +555,6 @@ export function SiteBookingList() {
                         </dt>
                         &nbsp;
                         <dd className="font-semibold text-[16px] text-[#595757]">
-                          {/* Show live editData seniority when editing */}
                           {isEditing
                             ? editData.seniority_no || "-"
                             : selectedMember.seniority_no || "-"}
@@ -587,7 +581,7 @@ export function SiteBookingList() {
 
                   {/* Editable fields grid */}
                   <dl className="grid grid-cols-2 gap-x-12 gap-y-6">
-                    {/* ✅ Project Name — dropdown when editing */}
+                    {/* Project Name — dropdown when editing */}
                     <div className="border-b border-gray-200 pb-4">
                       <dt className="inline font-semibold">Project Name: </dt>
                       {isEditing && !selectedMember?.cancelled ? (
@@ -611,7 +605,7 @@ export function SiteBookingList() {
                       )}
                     </div>
 
-                    {/* ✅ Seniority No — auto-updates on project change, still manually editable */}
+                    {/* Seniority No */}
                     <div className="border-b border-gray-200 pb-4">
                       <dt className="inline font-semibold">Seniority No: </dt>
                       {isEditing && !selectedMember?.cancelled ? (
@@ -634,32 +628,19 @@ export function SiteBookingList() {
                       selectedMember.sitedimension,
                     )}
                     {editField(
-                      "Transaction Id",
-                      "transactionid",
-                      selectedMember.transactionid,
-                    )}
-                    {editField(
-                      "Booking Amount",
-                      "bookingamount",
-                      selectedMember.bookingamount,
-                    )}
-                    {editField(
-                      "Down Payment",
-                      "downpayment",
-                      selectedMember.downpayment,
-                    )}
-                    {editField(
-                      "Payment Mode",
-                      "paymentmode",
-                      selectedMember.paymentmode,
-                    )}
-                    {editField(
                       "Total Amount",
                       "totalamount",
                       selectedMember.totalamount,
                     )}
+                    {/* Designation shown only if present (optional field) */}
+                    {(selectedMember.designation || isEditing) &&
+                      editField(
+                        "Designation",
+                        "designation",
+                        selectedMember.designation,
+                      )}
 
-                    {/* Payment Summary — calculated from receipts */}
+                    {/* Payment Summary */}
                     {(() => {
                       const { totalAmount, paidAmount, remainingAmount } =
                         calculatePaymentSummary(selectedMember);
@@ -680,7 +661,11 @@ export function SiteBookingList() {
                               Remaining Amount:{" "}
                             </dt>
                             <dd
-                              className={`inline font-semibold ${remainingAmount > 0 ? "text-red-500" : "text-green-600"}`}
+                              className={`inline font-semibold ${
+                                remainingAmount > 0
+                                  ? "text-red-500"
+                                  : "text-green-600"
+                              }`}
                             >
                               {isFetchingReceipts
                                 ? "Loading..."
@@ -691,6 +676,50 @@ export function SiteBookingList() {
                       );
                     })()}
                   </dl>
+
+                  {/* Family Particulars Section */}
+                  {selectedMember.nominees &&
+                    selectedMember.nominees.length > 0 && (
+                      <div className="mt-6">
+                        <h3 className="font-semibold text-[15px] mb-3 text-[#8356D6]">
+                          Family Particulars
+                        </h3>
+                        <div className="flex flex-col gap-3">
+                          {selectedMember.nominees.map((member, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-gray-50 border border-gray-200 rounded-xl p-4"
+                            >
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xs font-semibold text-[#8356D6] bg-purple-100 px-2 py-0.5 rounded-full">
+                                  Member {idx + 1}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-3 gap-4 text-sm">
+                                <div>
+                                  <span className="font-semibold text-gray-600">
+                                    Name:{" "}
+                                  </span>
+                                  <span>{member.name || "-"}</span>
+                                </div>
+                                <div>
+                                  <span className="font-semibold text-gray-600">
+                                    Age:{" "}
+                                  </span>
+                                  <span>{member.age || "-"}</span>
+                                </div>
+                                <div>
+                                  <span className="font-semibold text-gray-600">
+                                    Relationship:{" "}
+                                  </span>
+                                  <span>{member.relationship || "-"}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                   <div className="text-center mt-6">
                     <button

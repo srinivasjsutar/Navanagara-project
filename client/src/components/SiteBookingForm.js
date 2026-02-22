@@ -5,13 +5,11 @@ import axios from "axios";
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 
-// Helper: safely extract a string message from any response shape
 const extractMessage = (data) => {
   if (!data) return "";
   if (typeof data === "string") return data;
-  if (typeof data === "object") {
+  if (typeof data === "object")
     return data.message || data.error || data.msg || JSON.stringify(data);
-  }
   return String(data);
 };
 
@@ -22,12 +20,13 @@ export function SiteBookingForm() {
   const [fullSeniorityNo, setFullSeniorityNo] = useState("");
   const [isFetchingMember, setIsFetchingMember] = useState(false);
   const [memberFound, setMemberFound] = useState(false);
+  const [familyParticulars, setFamilyParticulars] = useState([
+    { name: "", age: "", relationship: "" },
+  ]);
 
-  // Define project list with their codes
   const projects = [
     { name: "New City", code: "NCG" },
     { name: "New City 1", code: "NCS" },
-    // Add more projects as needed
   ];
 
   const formik = useFormik({
@@ -36,138 +35,98 @@ export function SiteBookingForm() {
       Date: "",
       ProjectName: "",
       SiteDimension: "",
-      TransactionId: "",
       TotalAmount: "",
-      BookingAmount: "",
-      DownPayment: "",
-      PaymentMode: "",
-      Bank: "",
+      Designation: "",
       SeniorityNo: "",
     },
     validationSchema: yup.object({
       Name: yup
         .string()
-        .required("Name is required ")
-        .min(3, "minimum 3 characters required")
-        .max(50, "maximum 50 characters required")
+        .required("Name is required")
+        .min(3, "Minimum 3 characters required")
+        .max(50, "Maximum 50 characters required")
         .matches(/^[A-Za-z\s]+$/, "Only letters and spaces allowed"),
-
       Date: yup.date().required("Date is required"),
-
       ProjectName: yup.string().required("Project Name is required"),
-
-      SiteDimension: yup
-        .string()
-        .required("Site Dimension is required")
-        .matches(
-          /^[1-9]\d*\s*x\s*[1-9]\d*$/i,
-          "Enter valid dimension (Example: 30x50)",
-        ),
-
-      TransactionId: yup.string().required("Transaction ID is required"),
-
+      SiteDimension: yup.string().required("Site Dimension is required"),
       TotalAmount: yup
         .number()
         .required("Total amount is required")
         .positive("Amount must be greater than 0"),
-
-      BookingAmount: yup
-        .number()
-        .transform((value, originalValue) =>
-          originalValue === "" ? undefined : value,
-        )
-        .optional()
-        .nullable(),
-
-      DownPayment: yup
-        .number()
-        .transform((value, originalValue) =>
-          originalValue === "" ? undefined : value,
-        )
-        .optional()
-        .nullable(),
-
-      PaymentMode: yup
-        .string()
-        .required("Payment mode is required")
-        .oneOf(["Cash", "Cheque", "UPI"], "Select valid payment mode"),
-
-      Bank: yup
-        .string()
-        .required("Bank name is required")
-        .min(2, "Minimum 2 characters required"),
-
+      // Designation is now optional
+      Designation: yup.string().optional(),
       SeniorityNo: yup
         .string()
         .required("Seniority number required")
         .matches(/^[A-Z]{2,3}-\d{3,4}$/, "Invalid format (e.g., NCG-001)"),
     }),
-
     validateOnChange: false,
     validateOnBlur: false,
-
     onSubmit: async (values, { resetForm }) => {
+      // Family particulars: only validate rows where at least one field is filled
+      for (let i = 0; i < familyParticulars.length; i++) {
+        const fp = familyParticulars[i];
+        const anyFilled =
+          fp.name.trim() || fp.age.toString().trim() || fp.relationship.trim();
+        // If any field is partially filled, require all fields in that row
+        if (
+          anyFilled &&
+          (!fp.name.trim() ||
+            !fp.age.toString().trim() ||
+            !fp.relationship.trim())
+        ) {
+          toast.error(
+            `Please fill all fields for Family Member ${i + 1} or leave the row empty`,
+          );
+          return;
+        }
+      }
+
       setIsSubmitting(true);
       setSubmitMessage("");
-
       try {
+        // Filter out completely empty rows before submitting
+        const filteredFamilyParticulars = familyParticulars.filter(
+          (fp) =>
+            fp.name.trim() ||
+            fp.age.toString().trim() ||
+            fp.relationship.trim(),
+        );
+
         const payload = {
           name: values.Name,
           date: values.Date,
           projectname: values.ProjectName,
           sitedimension: values.SiteDimension,
-          transactionid: values.TransactionId,
           totalamount: Number(values.TotalAmount),
-          paymentmode: values.PaymentMode,
-          bank: values.Bank,
+          designation: values.Designation,
           seniority_no: values.SeniorityNo,
+          nominees: filteredFamilyParticulars,
         };
-
-        if (
-          values.BookingAmount !== "" &&
-          values.BookingAmount !== undefined &&
-          values.BookingAmount !== null
-        ) {
-          payload.bookingamount = Number(values.BookingAmount);
-        }
-        if (
-          values.DownPayment !== "" &&
-          values.DownPayment !== undefined &&
-          values.DownPayment !== null
-        ) {
-          payload.downpayment = Number(values.DownPayment);
-        }
 
         const response = await axios.post(
           "http://localhost:3001/site-booking",
           payload,
         );
-
-        // FIX: Always extract a plain string from response.data (was crashing when data was an object)
-        const successMsg =
-          extractMessage(response.data) || "Site booking created successfully!";
-        setSubmitMessage(successMsg);
+        setSubmitMessage(
+          extractMessage(response.data) || "Site booking created successfully!",
+        );
         toast.success("Site booking created successfully!");
         resetForm();
         setSeniorityInput("");
         setFullSeniorityNo("");
         setMemberFound(false);
+        setFamilyParticulars([{ name: "", age: "", relationship: "" }]);
       } catch (error) {
         console.error("Error submitting form:", error);
-
         if (error.response) {
-          // FIX: Always extract a plain string from error.response.data (was crashing when data was an object)
           const errMsg =
             extractMessage(error.response.data) || "An error occurred.";
           setSubmitMessage(errMsg);
           toast.error(`Error: ${errMsg}`);
         } else if (error.request) {
-          setSubmitMessage(
-            "No response from server. Please check if the server is running.",
-          );
-          toast.error(
-            "No response from server. Please check if the server is running.",
-          );
+          setSubmitMessage("No response from server.");
+          toast.error("No response from server.");
         } else {
           setSubmitMessage("An error occurred while submitting the form.");
           toast.error("An error occurred while submitting the form.");
@@ -178,7 +137,6 @@ export function SiteBookingForm() {
     },
   });
 
-  // Update the full seniority number when project or seniority input changes
   useEffect(() => {
     if (formik.values.ProjectName && seniorityInput) {
       const selectedProject = projects.find(
@@ -198,25 +156,17 @@ export function SiteBookingForm() {
     }
   }, [formik.values.ProjectName, seniorityInput]);
 
-  // Fetch member details from backend
   const fetchMemberDetails = async (seniorityNo) => {
     setIsFetchingMember(true);
     setMemberFound(false);
-
     try {
       const response = await axios.get("http://localhost:3001/members");
       const members = response.data.data || [];
-
       const member = members.find((m) => m.seniority_no === seniorityNo);
-
       if (member) {
         formik.setFieldValue("Name", member.name || "");
-
         const project = projects.find((p) => seniorityNo.startsWith(p.code));
-        if (project) {
-          formik.setFieldValue("ProjectName", project.name);
-        }
-
+        if (project) formik.setFieldValue("ProjectName", project.name);
         setMemberFound(true);
         setSubmitMessage("Member found! Name and Project auto-filled.");
       } else {
@@ -236,7 +186,29 @@ export function SiteBookingForm() {
     setSeniorityInput(value);
   };
 
-  // FIX: Safe string check — submitMessage is always a string now, but guard anyway
+  const handleFamilyChange = (index, field, value) => {
+    setFamilyParticulars((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const addFamilyMember = () => {
+    if (familyParticulars.length < 5) {
+      setFamilyParticulars((prev) => [
+        ...prev,
+        { name: "", age: "", relationship: "" },
+      ]);
+    }
+  };
+
+  const removeFamilyMember = (index) => {
+    if (familyParticulars.length > 1) {
+      setFamilyParticulars((prev) => prev.filter((_, i) => i !== index));
+    }
+  };
+
   const isErrorMessage =
     typeof submitMessage === "string" &&
     (submitMessage.includes("Error") ||
@@ -246,20 +218,14 @@ export function SiteBookingForm() {
   return (
     <div>
       <Header />
-
       <div className="w-[791px] px-10 ml-10">
         <h1 className="font-semibold text-2xl mt-[50px] mb-[40px]">
           Site Booking
         </h1>
 
-        {/* FIX: submitMessage is always a string; safe to call .includes() now */}
         {submitMessage && (
           <div
-            className={`p-4 mb-4 rounded ${
-              isErrorMessage
-                ? "bg-red-100 text-red-700"
-                : "bg-green-100 text-green-700"
-            }`}
+            className={`p-4 mb-4 rounded ${isErrorMessage ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}
           >
             {submitMessage}
           </div>
@@ -301,17 +267,15 @@ export function SiteBookingForm() {
               <label className="font-semibold text-[14px] pb-1">
                 Seniority Number <span className="text-red-500">*</span>
               </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Enter number (e.g., 001)"
-                  value={seniorityInput}
-                  onChange={handleSeniorityInputChange}
-                  disabled={!formik.values.ProjectName}
-                  maxLength="4"
-                  className="border border-gray-200 p-2 w-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-md disabled:bg-gray-100 disabled:cursor-not-allowed"
-                />
-              </div>
+              <input
+                type="text"
+                placeholder="Enter number (e.g., 001)"
+                value={seniorityInput}
+                onChange={handleSeniorityInputChange}
+                disabled={!formik.values.ProjectName}
+                maxLength="4"
+                className="border border-gray-200 p-2 w-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-md disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
               {fullSeniorityNo && (
                 <div
                   className={`text-sm mt-1 font-semibold ${memberFound ? "text-green-600" : "text-blue-600"}`}
@@ -328,7 +292,7 @@ export function SiteBookingForm() {
               )}
             </div>
 
-            {/* Name - Auto-filled */}
+            {/* Name */}
             <div>
               <label className="font-semibold text-[14px] pb-1">
                 Name <span className="text-red-500">*</span>
@@ -368,18 +332,24 @@ export function SiteBookingForm() {
               )}
             </div>
 
+            {/* Site Dimension */}
             <div>
               <label className="font-semibold text-[14px] pb-1">
                 Site Dimension <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
+              <select
                 name="SiteDimension"
-                placeholder="30x40"
                 onChange={formik.handleChange}
                 value={formik.values.SiteDimension}
-                className="border border-gray-200 p-2 w-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-md"
-              />
+                className="border border-gray-200 w-full p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-md"
+              >
+                <option value="">Select Dimension</option>
+                {["20x30", "30x40", "30x50", "40x60", "50x80"].map((dim) => (
+                  <option key={dim} value={dim}>
+                    {dim}
+                  </option>
+                ))}
+              </select>
               {formik.touched.SiteDimension && formik.errors.SiteDimension && (
                 <div className="text-red-500 text-sm mt-1">
                   {formik.errors.SiteDimension}
@@ -387,25 +357,7 @@ export function SiteBookingForm() {
               )}
             </div>
 
-            <div>
-              <label className="font-semibold text-[14px] pb-1">
-                Transaction ID <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="TransactionId"
-                placeholder="123465"
-                onChange={formik.handleChange}
-                value={formik.values.TransactionId}
-                className="border border-gray-200 p-2 w-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-md"
-              />
-              {formik.touched.TransactionId && formik.errors.TransactionId && (
-                <div className="text-red-500 text-sm mt-1">
-                  {formik.errors.TransactionId}
-                </div>
-              )}
-            </div>
-
+            {/* Total Amount */}
             <div>
               <label className="font-semibold text-[14px] pb-1">
                 Total Amount <span className="text-red-500">*</span>
@@ -425,89 +377,122 @@ export function SiteBookingForm() {
               )}
             </div>
 
-            {/* Booking Amount - Optional */}
+            {/* Designation (optional) */}
             <div>
               <label className="font-semibold text-[14px] pb-1">
-                Booking Amount
-                <span className="text-gray-400 text-xs ml-1">(optional)</span>
-              </label>
-              <input
-                type="number"
-                name="BookingAmount"
-                placeholder="1,50,000"
-                value={formik.values.BookingAmount}
-                onChange={formik.handleChange}
-                className="border border-gray-200 p-2 w-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-md"
-              />
-              {formik.touched.BookingAmount && formik.errors.BookingAmount && (
-                <div className="text-red-500 text-sm mt-1">
-                  {formik.errors.BookingAmount}
-                </div>
-              )}
-            </div>
-
-            {/* Down Payment - Optional */}
-            <div>
-              <label className="font-semibold text-[14px] pb-1">
-                Down Payment
-                <span className="text-gray-400 text-xs ml-1">(optional)</span>
-              </label>
-              <input
-                type="number"
-                name="DownPayment"
-                placeholder="50,000"
-                value={formik.values.DownPayment}
-                onChange={formik.handleChange}
-                className="border border-gray-200 p-2 w-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-md"
-              />
-              {formik.touched.DownPayment && formik.errors.DownPayment && (
-                <div className="text-red-500 text-sm mt-1">
-                  {formik.errors.DownPayment}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label className="font-semibold text-[14px] pb-1">
-                Payment Mode <span className="text-red-400">*</span>
-              </label>
-              <select
-                name="PaymentMode"
-                onChange={formik.handleChange}
-                value={formik.values.PaymentMode}
-                className="border border-gray-200 w-full p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-md"
-              >
-                <option value="">Select</option>
-                <option value="Cheque">Cheque</option>
-                <option value="Cash">Cash</option>
-                <option value="UPI">UPI</option>
-              </select>
-              {formik.touched.PaymentMode && formik.errors.PaymentMode && (
-                <div className="text-red-500 text-sm mt-1">
-                  {formik.errors.PaymentMode}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label className="font-semibold text-[14px] pb-1">
-                Bank <span className="text-red-500">*</span>
+                Designation
               </label>
               <input
                 type="text"
-                name="Bank"
-                placeholder="Enter Bank Name"
-                value={formik.values.Bank}
+                name="Designation"
+                placeholder="Enter Designation"
+                value={formik.values.Designation}
                 onChange={formik.handleChange}
                 className="border border-gray-200 p-2 w-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-md"
               />
-              {formik.touched.Bank && formik.errors.Bank && (
+              {formik.touched.Designation && formik.errors.Designation && (
                 <div className="text-red-500 text-sm mt-1">
-                  {formik.errors.Bank}
+                  {formik.errors.Designation}
                 </div>
               )}
             </div>
           </div>
+
+          {/* ── Family Particulars Section ── */}
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-[14px]">
+                Family Particulars
+                <span className="text-gray-400 font-normal text-xs ml-2">
+                  (optional, max 5)
+                </span>
+              </h3>
+              {familyParticulars.length < 5 && (
+                <button
+                  type="button"
+                  onClick={addFamilyMember}
+                  className="text-[#7158B6] text-sm font-semibold hover:underline flex items-center gap-1"
+                >
+                  <span className="text-lg leading-none">+</span> Add Member
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-4">
+              {familyParticulars.map((fp, index) => (
+                <div
+                  key={index}
+                  className="bg-white border border-gray-200 rounded-xl p-4"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-semibold text-[#7158B6]">
+                      Member {index + 1}
+                    </span>
+                    {familyParticulars.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeFamilyMember(index)}
+                        className="text-red-400 hover:text-red-600 text-sm font-medium"
+                      >
+                        ✕ Remove
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">
+                        Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Member name"
+                        value={fp.name}
+                        onChange={(e) =>
+                          handleFamilyChange(index, "name", e.target.value)
+                        }
+                        className="border border-gray-200 p-2 w-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-md text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">
+                        Age
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="Age"
+                        value={fp.age}
+                        min="1"
+                        max="120"
+                        onChange={(e) =>
+                          handleFamilyChange(index, "age", e.target.value)
+                        }
+                        className="border border-gray-200 p-2 w-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-md text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">
+                        Relationship
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Son, Wife"
+                        value={fp.relationship}
+                        onChange={(e) =>
+                          handleFamilyChange(
+                            index,
+                            "relationship",
+                            e.target.value,
+                          )
+                        }
+                        className="border border-gray-200 p-2 w-full bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-md text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="w-full h-[2.5px] text-gray-400 mt-8">
             <hr />
           </div>
@@ -515,9 +500,7 @@ export function SiteBookingForm() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`bg-gradient-to-r from-[#FFFF00] via-[#7158B6] to-[#7158B6] text-white font-bold px-8 py-2.5 rounded-full shadow-lg w-[150px] ${
-                isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-              }`}
+              className={`bg-gradient-to-r from-[#FFFF00] via-[#7158B6] to-[#7158B6] text-white font-bold px-8 py-2.5 rounded-full shadow-lg w-[150px] ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               {isSubmitting ? "Submitting..." : "Submit"}
             </button>

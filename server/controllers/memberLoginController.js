@@ -52,6 +52,7 @@ exports.loginMember = async (req, res) => {
         seniority_no: member.seniority_no,
         mobile: member.mobile,
         email: member.email,
+        image: member.image || null,
       },
     });
   } catch (error) {

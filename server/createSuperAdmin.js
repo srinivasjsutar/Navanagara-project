@@ -5,7 +5,7 @@ const SuperAdmin = require("./models/SuperAdmin");
 
 const createSuperAdmin = async () => {
   try {
-    await mongoose.connect("mongodb://localhost:27017/navanagara");
+    await mongoose.connect(process.env.MONGODB_URI);
     console.log("MongoDB Connected");
 
     // Change these values as you want

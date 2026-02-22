@@ -93,14 +93,15 @@ export function MemberDashboard() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="flex justify-between items-center px-10 py-[18px] shadow-sm bg-white">
-        <div className="font-semibold text-[30px] text-[#7C66CA]">
+        <div className="flex justify-center text-center items-center font-semibold text-[30px] text-[#7C66CA]">
+          <img src="/images/logo.svg" />
           Welcome, Navanagara
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 bg-gray-200 rounded-full overflow-hidden flex items-center justify-center">
               <img
-                src="/images/profile.webp"
+                src={memberData?.image || "/images/profile.webp"}
                 alt="Profile"
                 className="w-full h-full object-cover"
               />

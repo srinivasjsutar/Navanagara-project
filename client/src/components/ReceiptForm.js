@@ -74,6 +74,9 @@ const ReceiptForm = ({ initialData = {}, onReceiptGenerate = null }) => {
   const receiptRef = useRef(null);
   const [memberAddresses, setMemberAddresses] = useState([]);
 
+  // ── NEW: split seniority state (same logic as SiteBookingForm) ────────────
+  const [seniorityInput, setSeniorityInput] = useState("");
+
   // Multiple Transaction IDs (min 1, max 3)
   const [transactionIds, setTransactionIds] = useState([""]);
 
@@ -244,8 +247,16 @@ const ReceiptForm = ({ initialData = {}, onReceiptGenerate = null }) => {
 
         // ── Auto-fill address from member's saved addresses ──────────────────
         const addresses = [];
-        if (memberFound?.permanentaddress) addresses.push({ label: "Permanent Address", value: memberFound.permanentaddress });
-        if (memberFound?.correspondenceaddress) addresses.push({ label: "Correspondence Address", value: memberFound.correspondenceaddress });
+        if (memberFound?.permanentaddress)
+          addresses.push({
+            label: "Permanent Address",
+            value: memberFound.permanentaddress,
+          });
+        if (memberFound?.correspondenceaddress)
+          addresses.push({
+            label: "Correspondence Address",
+            value: memberFound.correspondenceaddress,
+          });
         setMemberAddresses(addresses);
         // Auto-select the first address
         if (addresses.length > 0) {
@@ -350,6 +361,30 @@ const ReceiptForm = ({ initialData = {}, onReceiptGenerate = null }) => {
   useEffect(() => {
     checkMemberAndReceipts(formik.values.seniorityNumber);
   }, [formik.values.seniorityNumber]);
+
+  // ── auto-build full seniority number when project or digits change ──────────
+  useEffect(() => {
+    if (formik.values.projectType && seniorityInput) {
+      const selectedProject = PROJECT_TYPES.find(
+        (p) => p.name === formik.values.projectType,
+      );
+      if (selectedProject) {
+        const padded = seniorityInput.padStart(3, "0");
+        formik.setFieldValue(
+          "seniorityNumber",
+          `${selectedProject.code}-${padded}`,
+        );
+      }
+    } else {
+      formik.setFieldValue("seniorityNumber", "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formik.values.projectType, seniorityInput]);
+
+  // only digits, max 3 chars
+  const handleSeniorityInputChange = (e) => {
+    setSeniorityInput(e.target.value.replace(/\D/g, "").slice(0, 3));
+  };
 
   // Validate payment items
   const validatePaymentItems = () => {
@@ -799,11 +834,11 @@ const ReceiptForm = ({ initialData = {}, onReceiptGenerate = null }) => {
       >
         <div style={{ flexShrink: 0 }}>
           <img
-            src={formik.values.logo || "/images/logo.svg"}
+            src={"/images/logoblack.jpeg"}
             alt="Logo"
             style={{
-              width: "170px",
-              height: "170px",
+              width: "150px",
+              height: "120px",
               marginBottom: "20px",
               objectFit: "contain",
             }}
@@ -1277,25 +1312,59 @@ const ReceiptForm = ({ initialData = {}, onReceiptGenerate = null }) => {
                   )}
                 </div>
 
-                {/* Seniority Number */}
+                {/* ── CHANGED: Project Name — now shown before seniority so prefix is set first ── */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Project Name <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="projectType"
+                    value={formik.values.projectType}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  >
+                    {PROJECT_TYPES.map((project) => (
+                      <option key={project.name} value={project.name}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* ── CHANGED: Seniority Number — 3-digit input + auto-generated code prefix ── */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Seniority Number <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    name="seniorityNumber"
-                    value={formik.values.seniorityNumber}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    placeholder="NCG-001"
-                    className={`w-full px-3 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-1 ${
-                      formik.touched.seniorityNumber &&
-                      formik.errors.seniorityNumber
-                        ? "border-red-500 focus:ring-red-500"
-                        : "border-gray-300 focus:ring-purple-500"
-                    }`}
-                  />
+                  <div className="flex items-center gap-2">
+                    {/* Read-only prefix badge */}
+                    <span className="px-2 py-1.5 text-sm font-semibold bg-purple-100 text-purple-700 border border-purple-300 rounded-md whitespace-nowrap">
+                      {PROJECT_TYPES.find(
+                        (p) => p.name === formik.values.projectType,
+                      )?.code || "---"}
+                    </span>
+                    {/* 3-digit number input */}
+                    <input
+                      type="text"
+                      value={seniorityInput}
+                      onChange={handleSeniorityInputChange}
+                      placeholder="001"
+                      maxLength={3}
+                      className={`w-full px-3 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-1 ${
+                        formik.touched.seniorityNumber &&
+                        formik.errors.seniorityNumber
+                          ? "border-red-500 focus:ring-red-500"
+                          : "border-gray-300 focus:ring-purple-500"
+                      }`}
+                    />
+                  </div>
+                  {/* Show generated full number */}
+                  {formik.values.seniorityNumber && (
+                    <p className="text-xs text-blue-600 font-semibold mt-1">
+                      Generated: {formik.values.seniorityNumber}
+                    </p>
+                  )}
                   {isCheckingMember && (
                     <div className="mt-1 p-2 bg-blue-50 border border-blue-200 rounded-md">
                       <p className="text-xs text-blue-800">
@@ -1358,26 +1427,6 @@ const ReceiptForm = ({ initialData = {}, onReceiptGenerate = null }) => {
                         {formik.errors.receivedFrom}
                       </p>
                     )}
-                </div>
-
-                {/* Project Type */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Project Name <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="projectType"
-                    value={formik.values.projectType}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500"
-                  >
-                    {PROJECT_TYPES.map((project) => (
-                      <option key={project.name} value={project.name}>
-                        {project.name}
-                      </option>
-                    ))}
-                  </select>
                 </div>
 
                 {/* Payment Mode */}
@@ -1620,7 +1669,9 @@ const ReceiptForm = ({ initialData = {}, onReceiptGenerate = null }) => {
                         formik.setFieldValue("flatNumber", e.target.value);
                       }}
                     >
-                      <option value="" disabled>— Select a saved address —</option>
+                      <option value="" disabled>
+                        — Select a saved address —
+                      </option>
                       {memberAddresses.map((addr, idx) => (
                         <option key={idx} value={addr.value}>
                           {addr.label}: {addr.value}
@@ -1644,7 +1695,9 @@ const ReceiptForm = ({ initialData = {}, onReceiptGenerate = null }) => {
                     }`}
                   />
                   {memberAddresses.length > 0 && (
-                    <p className="text-xs text-gray-400 mt-0.5">Select from dropdown or type a custom address above</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Select from dropdown or type a custom address above
+                    </p>
                   )}
                   {formik.touched.flatNumber && formik.errors.flatNumber && (
                     <p className="text-red-500 text-xs mt-0.5">
