@@ -219,6 +219,7 @@ Thank you for your payment.
 
 
  Your account is generated 
+link             : https://www.navanagarahousebuildingsociety.com/memberlogin
 Username         : ${seniorityNumber}
 password         : ${memberDoc.mobile}
 senority number  : ${seniorityNumber}
