@@ -20,7 +20,8 @@ connectDB();
 
 app.use(
   cors({
-    origin: ["https://navanagara-project-2.onrender.com", "https://www.navanagarahousebuildingsociety.com"],
+    // origin: ["https://navanagara-project-2.onrender.com", "https://www.navanagarahousebuildingsociety.com"],
+    origin: ["http://localhost:3000", "http://localhost:3000"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

@@ -77,6 +77,10 @@ const ReceiptForm = ({ initialData = {}, onReceiptGenerate = null }) => {
   // ── NEW: split seniority state (same logic as SiteBookingForm) ────────────
   const [seniorityInput, setSeniorityInput] = useState("");
 
+  // Created By — admin names
+  const ADMIN_NAMES = ["Vanita", "Sonakshi"];
+  const [createdBy, setCreatedBy] = useState(ADMIN_NAMES[0]);
+
   // Multiple Transaction IDs (min 1, max 3)
   const [transactionIds, setTransactionIds] = useState([""]);
 
@@ -662,7 +666,7 @@ const ReceiptForm = ({ initialData = {}, onReceiptGenerate = null }) => {
               .map((b) => b.bank)
               .filter(Boolean)
               .join(", "),
-            created_by: "Admin",
+            created_by: createdBy,
             pdfBase64,
             pdfFilename: filename,
           };
@@ -1858,6 +1862,31 @@ const ReceiptForm = ({ initialData = {}, onReceiptGenerate = null }) => {
                   {total > 0
                     ? `${amountInWords} Rupees Only`
                     : "No amount selected"}
+                </div>
+              </div>
+
+              {/* Created By */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Created By <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  <select
+                    value={createdBy}
+                    onChange={(e) => setCreatedBy(e.target.value)}
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  >
+                    {ADMIN_NAMES.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={createdBy}
+                    onChange={(e) => setCreatedBy(e.target.value)}
+                    placeholder="Or type name"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  />
                 </div>
               </div>
 

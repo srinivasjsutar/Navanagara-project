@@ -43,6 +43,7 @@ const receiptSchema = new mongoose.Schema(
     created_by: String,
     bank: String,
     seniority_no: String,
+    is_new_user: { type: Boolean, default: false }, // true if this was their very first receipt
     cancelled: { type: Boolean, default: false },
     cancelledAt: { type: Date },
     pdfUrl: { type: String, default: null }, // Cloudinary URL of the generated receipt PDF

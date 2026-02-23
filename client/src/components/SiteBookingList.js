@@ -26,6 +26,9 @@ export function SiteBookingList() {
   const [memberReceipts, setMemberReceipts] = useState([]);
   const [isFetchingReceipts, setIsFetchingReceipts] = useState(false);
 
+  // Profile image fetched by seniority_no
+  const [memberImage, setMemberImage] = useState(null);
+
   // Project → Seniority prefix map
   const projectPrefixMap = {
     "New City 1": "NCS",
@@ -64,6 +67,17 @@ export function SiteBookingList() {
     setMemberDetailsData(null);
     setIsEditing(false);
     setMemberReceipts([]);
+    setMemberImage(null);
+
+    // Fetch member profile image by seniority_no
+    axios
+      .get("http://localhost:3001/members")
+      .then((res) => {
+        const members = res.data.data || [];
+        const found = members.find((m) => m.seniority_no === member.seniority_no);
+        if (found?.image) setMemberImage(found.image);
+      })
+      .catch((err) => console.error("Error fetching member image:", err));
 
     // Fetch receipts for this member's seniority_no
     setIsFetchingReceipts(true);
@@ -93,6 +107,7 @@ export function SiteBookingList() {
     setMemberDetailsData(null);
     setIsEditing(false);
     setMemberReceipts([]);
+    setMemberImage(null);
   };
 
   const handleEditChange = (e) => {
@@ -128,8 +143,6 @@ export function SiteBookingList() {
       localStorage.getItem("superAdminToken") ||
       localStorage.getItem("adminToken");
 
-    // Send only the editable fields — avoids sending Mongoose internals
-    // Bank field removed
     const payload = {
       seniority_no: editData.seniority_no,
       name: editData.name,
@@ -198,14 +211,21 @@ export function SiteBookingList() {
     setMemberDetailsData(null);
   };
 
+  const MEMBERSHIP_FEE = 2500;
+
   const calculatePaymentSummary = (member) => {
     const totalAmount = parseFloat(member.totalamount) || 0;
-    const paidAmount = memberReceipts.reduce(
+    const totalPaid = memberReceipts.reduce(
       (sum, r) => sum + (parseFloat(r.amountpaid) || 0),
       0,
     );
-    const remainingAmount = totalAmount - paidAmount;
-    return { totalAmount, paidAmount, remainingAmount };
+    // New user = their FIRST receipt has is_new_user === true (set by backend at creation)
+    const isNewUser = memberReceipts.some((r) => r.is_new_user === true);
+    // Membership fee is separate — only the site payment counts toward totalAmount
+    const membershipFee = isNewUser ? MEMBERSHIP_FEE : 0;
+    const paidAmount = totalPaid - membershipFee;   // site payment only e.g. 102500 - 2500 = 100000
+    const remainingAmount = totalAmount - paidAmount; // 500000 - 100000 = 400000
+    return { totalAmount, paidAmount, remainingAmount, isNewUser };
   };
 
   const handleCancelClick = (member) => {
@@ -503,9 +523,9 @@ export function SiteBookingList() {
                       Site Booking Details
                     </h2>
                     <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden flex items-center justify-center">
-                      {selectedMember.image ? (
+                      {memberImage ? (
                         <img
-                          src={selectedMember.image}
+                          src={memberImage}
                           alt="Member"
                           className="w-full h-full object-cover"
                         />
@@ -632,7 +652,6 @@ export function SiteBookingList() {
                       "totalamount",
                       selectedMember.totalamount,
                     )}
-                    {/* Designation shown only if present (optional field) */}
                     {(selectedMember.designation || isEditing) &&
                       editField(
                         "Designation",
@@ -642,7 +661,7 @@ export function SiteBookingList() {
 
                     {/* Payment Summary */}
                     {(() => {
-                      const { totalAmount, paidAmount, remainingAmount } =
+                      const { totalAmount, paidAmount, remainingAmount, isNewUser } =
                         calculatePaymentSummary(selectedMember);
                       return (
                         <>
@@ -656,6 +675,19 @@ export function SiteBookingList() {
                                 : `₹${paidAmount.toLocaleString("en-IN")}`}
                             </dd>
                           </div>
+                          {!isFetchingReceipts && isNewUser && (
+                            <div className="border-b border-gray-200 pb-4">
+                              <dt className="inline font-semibold">
+                                Membership Fee:{" "}
+                              </dt>
+                              <dd className="inline font-semibold text-blue-600">
+                                ₹{MEMBERSHIP_FEE.toLocaleString("en-IN")}
+                              </dd>
+                              <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                                New Member
+                              </span>
+                            </div>
+                          )}
                           <div className="border-b border-gray-200 pb-4">
                             <dt className="inline font-semibold">
                               Remaining Amount:{" "}

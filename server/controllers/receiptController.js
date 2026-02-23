@@ -166,6 +166,13 @@ exports.createReceipt = async (req, res) => {
       }
     }
 
+    // Detect if this is the user's very first receipt (new user)
+    const existingReceiptCount = await Receipt.countDocuments({
+      seniority_no: seniorityNumber,
+      cancelled: { $ne: true },
+    });
+    const isNewUser = existingReceiptCount === 0;
+
     const receiptData = {
       membershipid: seniorityNumber,
       receipt_no,
@@ -184,6 +191,7 @@ exports.createReceipt = async (req, res) => {
       created_by: req.body.created_by || "Admin",
       bank,
       seniority_no: seniorityNumber,
+      is_new_user: isNewUser,
       pdfUrl, // ✅ Cloudinary URL of the generated receipt PDF
     };
 

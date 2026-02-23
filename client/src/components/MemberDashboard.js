@@ -303,17 +303,11 @@ export function MemberDashboard() {
                 <div className="flex justify-between items-start mb-6">
                   <h2 className="text-2xl font-semibold">Receipt Details</h2>
                   <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden flex items-center justify-center">
-                    <svg
-                      className="w-10 h-10 text-gray-400"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+                    <img
+                      src={memberData?.image || "/images/profile.webp"}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                 </div>
 

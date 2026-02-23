@@ -21,6 +21,7 @@ export function ReceiptList() {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({});
   const [downloadingId, setDownloadingId] = useState(null);
+  const [memberImage, setMemberImage] = useState(null);
 
   // Download receipt PDF — same format as ReceiptForm
   const handleDownloadReceipt = async (receipt) => {
@@ -59,17 +60,29 @@ export function ReceiptList() {
   const handleSearchChange = (e) => setSearchQuery(e.target.value);
   const clearSearch = () => setSearchQuery("");
 
-  const handleViewDetails = (member) => {
+  const handleViewDetails = async (member) => {
     setSelectedMember(member);
     setEditData(member);
     setIsModalOpen(true);
     setIsEditing(false);
+    setMemberImage(null);
+
+    // Fetch member profile image using seniority_no
+    try {
+      const res = await axios.get("http://localhost:3001/members");
+      const members = res.data.data || [];
+      const found = members.find((m) => m.seniority_no === member.seniority_no);
+      if (found?.image) setMemberImage(found.image);
+    } catch (err) {
+      console.error("Error fetching member image:", err);
+    }
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedMember(null);
     setIsEditing(false);
+    setMemberImage(null);
   };
 
   const handleEditChange = (e) => {
@@ -308,14 +321,12 @@ export function ReceiptList() {
               </button>
 
               <div className="flex items-center gap-3">
-                {/* Cancelled badge in modal */}
                 {selectedMember.cancelled && (
                   <span className="bg-red-100 text-red-600 text-sm font-semibold px-4 py-2 rounded-full border border-red-300">
                     ✕ Cancelled
                   </span>
                 )}
 
-                {/* Edit buttons only if NOT cancelled and superadmin */}
                 {isSuperAdmin && !selectedMember.cancelled && (
                   <div className="flex gap-2">
                     {isEditing ? (
@@ -353,14 +364,11 @@ export function ReceiptList() {
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex items-center gap-3">
                     <h2 className="text-2xl font-semibold">Receipt Details</h2>
-                    {/* {selectedMember.cancelled && (
-                      <span className="bg-red-100 text-red-600 text-xs font-semibold px-3 py-1 rounded-full">Cancelled</span>
-                    )} */}
                   </div>
                   <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden flex items-center justify-center">
-                    {selectedMember.image ? (
+                    {memberImage ? (
                       <img
-                        src={selectedMember.image}
+                        src={memberImage}
                         alt="Member"
                         className="w-full h-full object-cover"
                       />
@@ -459,10 +467,35 @@ export function ReceiptList() {
                     "paymenttype",
                     selectedMember.paymenttype,
                   )}
-                  {editField(
-                    "Paid Amount",
-                    "amountpaid",
-                    selectedMember.amountpaid,
+                  {/* Paid Amount — split membership fee for new users */}
+                  <div className="border-b border-gray-200 pb-4">
+                    <dt className="inline font-semibold">Paid Amount: </dt>
+                    {isEditing && !selectedMember?.cancelled ? (
+                      <input
+                        name="amountpaid"
+                        value={editData.amountpaid || ""}
+                        onChange={handleEditChange}
+                        className="border border-gray-300 rounded px-2 py-1 text-sm ml-1"
+                      />
+                    ) : (
+                      <dd className="inline font-normal">
+                        ₹{(
+                          selectedMember.is_new_user
+                            ? (parseFloat(selectedMember.amountpaid) || 0) - 2500
+                            : (parseFloat(selectedMember.amountpaid) || 0)
+                        ).toLocaleString("en-IN")}
+                      </dd>
+                    )}
+                  </div>
+                  {/* Membership Fee — only for new users */}
+                  {selectedMember.is_new_user && (
+                    <div className="border-b border-gray-200 pb-4">
+                      <dt className="inline font-semibold">Membership Fee: </dt>
+                      <dd className="inline font-semibold text-blue-600 ml-1">₹2,500</dd>
+                      <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                        New Member
+                      </span>
+                    </div>
                   )}
                   {editField(
                     "Payment Mode",
@@ -470,6 +503,16 @@ export function ReceiptList() {
                     selectedMember.paymentmode,
                   )}
                   {editField("Select Bank", "bank", selectedMember.bank)}
+                  {isSuperAdmin && (
+                    <div className="border-b border-gray-200 pb-4">
+                      <dt className="inline font-semibold">Created By: </dt>
+                      <dd className="inline font-normal ml-1">
+                        <span className="inline-flex items-center gap-1 bg-purple-100 text-purple-700 text-xs font-semibold px-2 py-1 rounded-full">
+                          👤 {selectedMember.created_by || "-"}
+                        </span>
+                      </dd>
+                    </div>
+                  )}
                   <div className="col-span-2 flex justify-end pt-2">
                     <button
                       onClick={() => handleDownloadReceipt(selectedMember)}
