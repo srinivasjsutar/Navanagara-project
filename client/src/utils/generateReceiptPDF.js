@@ -193,7 +193,10 @@ const buildReceiptHTML = (receipt) => {
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export const generateReceiptPDF = async (receipt) => {
-  const filename = `Receipt_${(receipt.receipt_no || "draft").replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+  const projectPart = (receipt.projectname || "").replace(/[^a-zA-Z0-9]/g, "_");
+  const seniorityPart = (receipt.seniority_no || "").replace(/[^a-zA-Z0-9]/g, "_");
+  const receiptPart = (receipt.receipt_no || "draft").replace(/[^a-zA-Z0-9]/g, "_");
+  const filename = `${projectPart}_${seniorityPart}_${receiptPart}.pdf`;
 
   // ── Strategy 1: Backend proxy-streams the PDF — no Cloudinary 401 issues ────
   try {

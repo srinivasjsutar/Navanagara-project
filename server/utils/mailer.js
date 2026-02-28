@@ -109,7 +109,10 @@ const sendMail = async (
 
     // Attach PDF if provided and within Brevo's size limits (~10 MB)
     if (pdfBase64 && pdfFilename) {
+      // Calculate PDF size
       const pdfSizeKB = Math.round((pdfBase64.length * 3) / 4 / 1024);
+      console.log(`📎 PDF Size: ${pdfSizeKB} KB`);
+      
       if (pdfSizeKB > 9000) {
         console.warn(
           `⚠️ PDF too large to attach (${pdfSizeKB} KB) — sending without attachment`,
@@ -121,8 +124,12 @@ const sendMail = async (
             content: pdfBase64,
           },
         ];
-        console.log(`📎 Attaching PDF: ${pdfFilename} (${pdfSizeKB} KB)`);
+        console.log(`✅ PDF attached: ${pdfFilename} (${pdfSizeKB} KB)`);
       }
+    } else {
+      console.warn('⚠️ No PDF to attach');
+      if (!pdfBase64) console.log('   ❌ pdfBase64 is MISSING or empty');
+      if (!pdfFilename) console.log('   ❌ pdfFilename is MISSING or empty');
     }
 
     console.log("🔄 Sending via Brevo API...");

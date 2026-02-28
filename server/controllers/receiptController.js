@@ -58,6 +58,7 @@ exports.updateReceipt = async (req, res) => {
     });
   }
 };
+
 // Create receipt
 exports.createReceipt = async (req, res) => {
   try {
@@ -135,7 +136,13 @@ exports.createReceipt = async (req, res) => {
       `🧾 Using receipt number: ${receipt_no} (Project: ${projectName})`,
     );
 
+    // ✅ CHECK IF PDF WAS SENT FROM FRONTEND
     const pdfBase64 = req.body.pdfBase64;
+    const pdfFilename = req.body.pdfFilename || `Receipt_${receipt_no}.pdf`;
+
+    console.log('🔍 PDF Data Check:');
+    console.log('   pdfBase64:', pdfBase64 ? `✅ Received (${pdfBase64.length} chars)` : '❌ MISSING');
+    console.log('   pdfFilename:', pdfFilename);
 
     // Upload PDF to Cloudinary (same pattern as member images)
     let pdfUrl = null;
@@ -148,7 +155,7 @@ exports.createReceipt = async (req, res) => {
               folder: "receipts",
               resource_type: "raw",
               format: "pdf",
-              public_id: `Receipt_${receipt_no.replace(/[^a-zA-Z0-9]/g, "_")}`,
+              public_id: `${projectName.replace(/[^a-zA-Z0-9]/g, "_")}_${seniorityNumber}`,
               type: "upload", // ✅ ensures public delivery type
               access_mode: "public", // ✅ makes the PDF publicly accessible (no 401)
             },
@@ -164,6 +171,8 @@ exports.createReceipt = async (req, res) => {
       } catch (uploadErr) {
         console.error("⚠️ Cloudinary PDF upload failed:", uploadErr.message);
       }
+    } else {
+      console.warn('⚠️ No PDF provided - skipping Cloudinary upload');
     }
 
     // Detect if this is the user's very first receipt (new user)
@@ -210,15 +219,16 @@ exports.createReceipt = async (req, res) => {
     // Send emails in background (after response is sent)
     setImmediate(async () => {
       try {
-        const pdfFilename = req.body.pdfFilename || `Receipt_${receipt_no}.pdf`;
+        console.log('\n📧 Starting email sending process...');
+        console.log('   PDF Base64:', pdfBase64 ? `Present (${pdfBase64.length} chars)` : 'MISSING');
+        console.log('   PDF Filename:', pdfFilename);
 
         // Customer email message
         const customerMessage = `Dear ${receiptData.name},
 
 Thank you for your payment.
 
-
- Your account is generated 
+Your account is generated 
 link             : https://www.navanagarahousebuildingsociety.com/memberlogin
 Username         : ${seniorityNumber}
 password         : ${memberDoc.mobile}
@@ -287,7 +297,7 @@ Navanagara Admin System`;
         }
 
         // 2. Send to COMPANY email (from .env)
-        const companyEmail = process.env.COMPANY_EMAIL; // ✅ fixed from EMAIL_USER
+        const companyEmail = process.env.COMPANY_EMAIL;
         if (companyEmail && companyEmail.trim()) {
           console.log(`📧 Sending to company: ${companyEmail}`);
           emailPromises.push(
@@ -314,7 +324,7 @@ Navanagara Admin System`;
 
         await Promise.all(emailPromises);
         console.log(
-          `📧 Email sending completed. Total sent: ${emailPromises.length}`,
+          `📧 Email sending completed. Total sent: ${emailPromises.length}\n`,
         );
       } catch (emailError) {
         console.error("⚠️ Email sending failed:", emailError.message);
@@ -389,7 +399,7 @@ exports.getReceiptById = async (req, res) => {
 exports.downloadReceiptPDF = async (req, res) => {
   try {
     const receipt = await Receipt.findById(req.params.id).select(
-      "pdfUrl receipt_no",
+      "pdfUrl receipt_no projectname seniority_no",
     );
 
     if (!receipt) {
@@ -410,7 +420,19 @@ exports.downloadReceiptPDF = async (req, res) => {
     const https = require("https");
     const http = require("http");
 
-    const filename = `Receipt_${(receipt.receipt_no || "receipt").replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+    const projectPart = (receipt.projectname || "").replace(
+      /[^a-zA-Z0-9]/g,
+      "_",
+    );
+    const seniorityPart = (receipt.seniority_no || "").replace(
+      /[^a-zA-Z0-9]/g,
+      "_",
+    );
+    const receiptPart = (receipt.receipt_no || "receipt").replace(
+      /[^a-zA-Z0-9]/g,
+      "_",
+    );
+    const filename = `${projectPart}_${seniorityPart}_${receiptPart}.pdf`;
 
     // Set response headers so the browser treats it as a file download
     res.setHeader("Content-Type", "application/pdf");
@@ -441,6 +463,7 @@ exports.downloadReceiptPDF = async (req, res) => {
     res.status(500).json({ success: false, message: "Error fetching PDF" });
   }
 };
+
 exports.backfillReceipts = async (req, res) => {
   try {
     const receipts = await Receipt.find({});

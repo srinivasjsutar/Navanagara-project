@@ -22,7 +22,6 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-
     // Log request for debugging (remove in production)
     console.log(`API Request: ${config.method.toUpperCase()} ${config.url}`);
 
