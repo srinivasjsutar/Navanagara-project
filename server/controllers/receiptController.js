@@ -432,7 +432,7 @@ exports.downloadReceiptPDF = async (req, res) => {
       /[^a-zA-Z0-9]/g,
       "_",
     );
-    const filename = `${projectPart}_${seniorityPart}_${receiptPart}.pdf`;
+    const filename = `${projectPart}_${seniorityPart}.pdf`;
 
     // Set response headers so the browser treats it as a file download
     res.setHeader("Content-Type", "application/pdf");
